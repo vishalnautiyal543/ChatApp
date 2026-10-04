@@ -1,4 +1,5 @@
 import { User } from "../models/user.model.js";
+import jwt from "jsonwebtoken"
 
 const registerUser = async (req, res) => {
   try {
@@ -112,8 +113,81 @@ const login = async (req, res) => {
 
         return res.status(500).json({
         message: "Internal server error",
+
         });
   }
 };
 
-export { registerUser,login };
+
+const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId)
+      .select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+//search user 
+const searchUsers = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.trim().length < 2) {
+      return res.status(400).json({
+        message: "Search query must contain at least 2 characters",
+      });
+    }
+
+    const users = await User.find({
+      _id: { $ne: req.user.userId },
+
+      $or: [
+        {
+          name: {
+            $regex: query,
+            $options: "i",
+          },
+        },
+        {
+          email: {
+            $regex: query,
+            $options: "i",
+          },
+        },
+      ],
+    })
+      .select("_id name email avatar")
+      .limit(20);
+
+    return res.status(200).json({
+      users,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+
+
+
+
+export { registerUser,login ,getMe, searchUsers};
